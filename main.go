@@ -1,36 +1,53 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/hex"
-	"fmt"
+	"log"
+
+	"github.com/boltdb/bolt"
 )
 
-func validHash(hash [32]byte, miningRule []byte) bool {
-	for i, m := range miningRule {
-		if m != hash[i] {
-			return false
-		}
-	}
-	return true
-}
+func deserializeBlock(d []byte) (b *Block) {
+	decoder := gob.NewDecoder(bytes.NewReader(d))
 
-func compareHash(a, b [32]byte) bool {
-	for i, x := range a {
-		if b[i] != x {
-			return false
-		}
+	if err := decoder.Decode(&b); err != nil {
+		log.Fatal(err)
 	}
-	return true
+
+	return
 }
 
 func main() {
 	data := []byte("Some Data")
 	minigRule, _ := hex.DecodeString("beef")
-	b := Block{id: 1, data: data}
+	b := Block{Id: 1, Data: data}
 	b.mineBlock(minigRule, 1)
-	fmt.Printf("id: %v\n", b.id)
-	fmt.Printf("nonce: %v\n", b.nonce)
-	fmt.Printf("data: %s\n", b.data)
-	fmt.Printf("hash: %x\n", b.hash)
-	fmt.Printf("valid: %v\n", b.validate())
+	b.print()
+
+	db, err := bolt.Open("./blockchain.db", 0600, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	bucketName := []byte("blockchain")
+
+	db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists(bucketName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		id, body := b.serialize()
+		return bucket.Put(id, body)
+	})
+
+	db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(bucketName)
+		id, _ := b.serialize()
+		serialized := bucket.Get(id)
+		b2 := deserializeBlock(serialized)
+		b2.print()
+		return nil
+	})
 }
