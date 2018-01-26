@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/gob"
 	"fmt"
-	"log"
 )
 
 // Block struct
@@ -55,19 +52,6 @@ func (b *Block) mineBlock(rule []byte, nonce uint32) {
 		hash = b.hashBlock()
 	}
 	b.Hash = hash
-}
-
-func (b *Block) serialize() (id []byte, block []byte) {
-	var result bytes.Buffer
-
-	if err := gob.NewEncoder(&result).Encode(b); err != nil {
-		log.Fatal(err)
-	}
-
-	id = make([]byte, 4)
-	binary.LittleEndian.PutUint32(id, b.Id)
-
-	return id, result.Bytes()
 }
 
 func (b *Block) validate() bool {
