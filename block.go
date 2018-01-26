@@ -44,8 +44,8 @@ func (b *Block) hashBlock() [32]byte {
 	return sha256.Sum256(bs)
 }
 
-func (b *Block) mineBlock(rule []byte, nonce uint32) {
-	b.Nonce = nonce
+func (b *Block) mineBlock(rule []byte) {
+	b.Nonce = 1
 	hash := b.hashBlock()
 	for !validHash(hash, rule) {
 		b.Nonce = b.Nonce + 1

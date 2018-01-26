@@ -8,7 +8,7 @@ func main() {
 	data := []byte("Some Data")
 	minigRule, _ := hex.DecodeString("beef")
 	b := Block{Id: 1, Data: data}
-	b.mineBlock(minigRule, 1)
+	b.mineBlock(minigRule)
 	b.print()
 
 	db := Db{bucketName: []byte("blockchain")}
