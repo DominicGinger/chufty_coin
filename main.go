@@ -5,20 +5,27 @@ import (
 )
 
 func main() {
-	data := []byte("Some Data")
 	minigRule, _ := hex.DecodeString("beef")
-	b := Block{Id: 1, Data: data}
-	b.mineBlock(minigRule)
-	b.print()
-
 	db := Db{bucketName: []byte("blockchain")}
 	db.open("./blockchain.db")
 	defer db.db.Close()
 
-	id, body := serialize(b)
-	db.put(id, body)
+	data := []byte("Some Data")
+	b := Block{Id: 1, Data: data}
+	b.mineBlock(minigRule)
 
-	result := db.get(id)
-	b2 := deserialize(result)
-	b2.print()
+	body := serialize(b)
+	db.put(map[string][]byte{string(b.Hash[:]): body, "tip": b.Hash[:]})
+
+	secondBlock := Block{Id: 2, Data: []byte("data 2"), PrevHash: b.Hash}
+	secondBlock.mineBlock(minigRule)
+	body = serialize(secondBlock)
+	db.put(map[string][]byte{string(secondBlock.Hash[:]): body, "tip": secondBlock.Hash[:]})
+
+	result := db.deepGet([]byte("tip"), 1)
+	block := deserialize(result)
+	block.print()
+	result = db.deepGet(block.PrevHash[:], 0)
+	block = deserialize(result)
+	block.print()
 }

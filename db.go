@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/gob"
 	"log"
 
@@ -14,17 +13,14 @@ type Db struct {
 	db         *bolt.DB
 }
 
-func serialize(b Block) (id []byte, block []byte) {
+func serialize(b Block) []byte {
 	var result bytes.Buffer
 
 	if err := gob.NewEncoder(&result).Encode(b); err != nil {
 		log.Fatal(err)
 	}
 
-	id = make([]byte, 4)
-	binary.LittleEndian.PutUint32(id, b.Id)
-
-	return id, result.Bytes()
+	return result.Bytes()
 }
 
 func deserialize(d []byte) (b *Block) {
@@ -45,21 +41,41 @@ func (d *Db) open(fileName string) {
 	d.db = db
 }
 
-func (d *Db) put(key, value []byte) {
+func (d *Db) put(pairs map[string][]byte) {
 	d.db.Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists(d.bucketName)
 		if err != nil {
 			log.Fatal(err)
 		}
-		return bucket.Put(key, value)
+		for key, value := range pairs {
+			if err = bucket.Put([]byte(key), value); err != nil {
+				log.Fatal(err)
+			}
+		}
+		return nil
 	})
 }
 
-func (d *Db) get(key []byte) (result []byte) {
+func (d *Db) deepGet(key []byte, depth int) []byte {
+	result := key
 	d.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(d.bucketName)
-		result = bucket.Get(key)
+		for i := 0; i <= depth; i++ {
+			result = bucket.Get(result)
+		}
 		return nil
 	})
-	return
+	return result
+}
+
+func (d *Db) get(keys []string) [][]byte {
+	result := make([][]byte, len(keys))
+	d.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(d.bucketName)
+		for _, key := range keys {
+			result = append(result, bucket.Get([]byte(key)))
+		}
+		return nil
+	})
+	return result
 }
